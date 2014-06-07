@@ -61,7 +61,7 @@ def index():
 @jsonrpc.method("output")
 @auth.login_required
 def output(printer_name="zebra_python_unittest", format="epl2", data=[]):
-    '''Get a reading from the scale.'''
+    '''Print something on the printer.'''
     return PRINTER.output(printer_name=printer_name, format=format,
                           data=data, raw=False, test=False)
 

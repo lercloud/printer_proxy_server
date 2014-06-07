@@ -22,6 +22,10 @@
 
 import os.path
 import sys
+import math
+import struct
+from PIL import Image
+from StringIO import StringIO
 
 if sys.platform.lower().startswith('win'):
     IS_WINDOWS = True
@@ -128,12 +132,79 @@ class zebra(object):
         filename - local filename
         """
         assert filename.lower().endswith('.pcx')
-        commands = '\nGK"%s"\n'%name
-        commands += 'GK"%s"\n'%name
+        commands = '\r\nGK"%s"\r\n'%name
+        commands += 'GK"%s"\r\n'%name
         size = os.path.getsize(filename)
-        commands += 'GM"%s"%s\n'%(name,size)
+        commands += 'GM"%s"%s\r\n'%(name,size)
         self.output(commands)
         self.output(open(filename,'rb').read())
+
+    def print_graphic(self, filename, x, y):
+        """Print an image file on the label printer.
+
+        filename - local filename
+        x        - x offset
+        y        - y offset
+        """
+        with open(filename, "rb") as f:
+            return self.print_graphic_data(f.read(), x, y)
+
+    def print_graphic_data(self, data, x, y):
+        """Print image data on the label printer
+
+        data - PIL-compatible image data
+        x    - x offset
+        y    - y offset
+        """
+        bits_per_byte = 8
+        
+        # Convert image data to black and white.
+        img = Image.open(StringIO(data)).convert("1")
+
+        # Assign variable values for better readability.
+        width = img.size[0] 
+        height = img.size[1]
+
+        # Gonna be iterating over the image data and padding
+        # the last bits of each line with enough zero bits to
+        # make a full byte. Hence the array instead of just
+        # using the function's return value directly.
+        pixels = [px for px in img.getdata()]
+
+        # The EPL2 command for printing graphics expects the
+        # image data to be passed as a single, continuous string.
+        data = ""
+
+        # Create our image's string of bytes, with each line
+        # zero padded to fill out its last byte as needed.
+        for y in range(0, height):
+            byte = ""
+
+            for x in range(0, width):
+                byte += "0" if pixels[x+(width*y)] == 0 else "1"
+
+                if len(byte) == bits_per_byte:
+                    data += chr(int(byte, 2))
+                    byte = ""
+
+            if len(byte) > 0:
+                data += chr(int((byte+'00000000')[0:bits_per_byte], 2))
+
+        # This should eventually be made more generic. Here's what's going on:
+        # EPL2 - Let the printer know we'll be sending EPL2 commands.
+        # q812 - Set label width to 812 pixels. (We're assuming 4x6 labels here.)
+        # Q1218,24+0 - Set label length to 1218 pixels, gap between labels to 24 pixels, and label offset to 0 pixels.
+        # S4 - Set print speed to 3.5ips (83mm/s)
+        # UN - Disable error reporting.
+        # WN - Disable Windows mode. (WY to enable.)
+        # ZB - Print bottom of image first. (ZT to print top first.)
+        # I8,A,001 - Tell printer to expect 8-bit data (I8), Latin 1 encoding (A), and US localization (001).
+        # N - Clear image buffer.
+        # GWx,y,w,h,d - Buffer graphic with `x`,`y` offset, width in bytes `w`, height in pixels/bits `h`, and image data `d`.
+        # P1 - Print one copy of whatever in the buffer can fit on 1 label.
+        command = 'EPL2\r\nq812\r\nQ1218,24+0\r\nS4\r\nUN\r\nWN\r\nZB\r\nI8,A,001\r\nN\r\nGW%s,%s,%s,%s,%s\r\nP1\r\n'% (
+                (x, y, int(math.ceil(width/float(bits_per_byte))), height, data))
+        self.output(command)
 
 if __name__ == '__main__':
     z = zebra()
