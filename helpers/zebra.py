@@ -165,10 +165,9 @@ class zebra(object):
         if not Image: # Is PIL available?
             raise Exception("Python Imaging Library not installed! Cannot print graphic.")
 
-        bits_per_byte = 8
         
         # Convert image data to black and white.
-        img = Image.open(StringIO(data)).convert("1")
+        img = Image.open(StringIO(data)).convert("L")
 
         # Assign variable values for better readability.
         width = img.size[0] 
@@ -178,8 +177,27 @@ class zebra(object):
         # the last bits of each line with enough zero bits to
         # make a full byte. Hence the array instead of just
         # using the function's return value directly.
-        pixels = [px for px in img.getdata()]
+        pixels = [0 if px < 192 else 1 for px in img.getdata()]
 
+        data = self._generate_epl2_data(pixels, width, height)
+
+        # This should eventually be made more generic. Here's what's going on:
+        # EPL2 - Set page mode.
+        # q812 - Set label width to 812 pixels. (We're assuming 4x6 labels here.)
+        # Q1218,24+0 - Set label length to 1218 pixels, gap between labels to 24 pixels, and label offset to 0 pixels.
+        # S4 - Set print speed to 3.5ips (83mm/s)
+        # UN - Disable error reporting.
+        # WN - Disable Windows mode. (WY to enable.)
+        # ZB - Print bottom of image first. (ZT to print top first.)
+        # I8,A,001 - Tell printer to expect 8-bit data (I8), Latin 1 encoding (A), and US localization (001).
+        # N - Clear image buffer.
+        # GWx,y,w,h,d - Buffer graphic with `x`,`y` offset, width in bytes `w`, height in pixels/bits `h`, and image data `d`.
+        # P1 - Print one copy of whatever in the buffer can fit on 1 label.
+        return self.output('EPL2\r\nq812\r\nQ1218,24+0\r\nS4\r\nUN\r\nWN\r\nZB\r\nI8,A,001\r\nN\r\nGW%s,%s,%s,%s,%s\r\nP1\r\n'% (
+                (x, y, int(math.ceil(width/float(BITS_PER_BYTE))), height, data)))
+
+
+    def _generate_epl2_data(self, pixels, width, height):
         # The EPL2 command for printing graphics expects the
         # image data to be passed as a single, continuous string.
         data = ""
@@ -199,22 +217,9 @@ class zebra(object):
             if len(byte) > 0:
                 data += chr(int((byte+'00000000')[0:BITS_PER_BYTE], 2))
 
+        return data
 
-        # This should eventually be made more generic. Here's what's going on:
-        # EPL2 - Let the printer know we'll be sending EPL2 commands.
-        # q812 - Set label width to 812 pixels. (We're assuming 4x6 labels here.)
-        # Q1218,24+0 - Set label length to 1218 pixels, gap between labels to 24 pixels, and label offset to 0 pixels.
-        # S4 - Set print speed to 3.5ips (83mm/s)
-        # UN - Disable error reporting.
-        # WN - Disable Windows mode. (WY to enable.)
-        # ZB - Print bottom of image first. (ZT to print top first.)
-        # I8,A,001 - Tell printer to expect 8-bit data (I8), Latin 1 encoding (A), and US localization (001).
-        # N - Clear image buffer.
-        # GWx,y,w,h,d - Buffer graphic with `x`,`y` offset, width in bytes `w`, height in pixels/bits `h`, and image data `d`.
-        # P1 - Print one copy of whatever in the buffer can fit on 1 label.
-        command = 'EPL2\r\nq812\r\nQ1218,24+0\r\nS4\r\nUN\r\nWN\r\nZB\r\nI8,A,001\r\nN\r\nGW%s,%s,%s,%s,%s\r\nP1\r\n'% (
-                (x, y, int(math.ceil(width/float(BITS_PER_BYTE))), height, data))
-        self.output(command)
+
 
 if __name__ == '__main__':
     z = zebra()
