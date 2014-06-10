@@ -11,7 +11,7 @@ from printer import PrinterController
 from header_decorators import json_headers
 
 DB = 'users.db'
-PRINTER = PrinterController()
+PRINTER = None
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
@@ -62,8 +62,10 @@ def index():
 @auth.login_required
 def output(printer_name="zebra_python_unittest", format="epl2", data=[]):
     '''Print something on the printer.'''
-    return PRINTER.output(printer_name=printer_name, format=format,
-                          data=data, raw=False, test=False)
+    if not PRINTER or PRINTER.name != printer_name:
+        PRINTER = PrinterController(name=printer_name)
+
+    return PRINTER.output(format=format, data=data, raw=False, test=False)
 
 
 if __name__ == "__main__":
