@@ -155,7 +155,7 @@ class zebra(object):
         with open(filename, "rb") as f:
             return self.print_graphic_data(f.read(), x, y)
 
-    def print_graphic_data(self, data, x, y):
+    def print_graphic_data(self, data, x, y, execute=True):
         """Print image data on the label printer
 
         data - PIL-compatible image data
@@ -193,9 +193,13 @@ class zebra(object):
         # N - Clear image buffer.
         # GWx,y,w,h,d - Buffer graphic with `x`,`y` offset, width in bytes `w`, height in pixels/bits `h`, and image data `d`.
         # P1 - Print one copy of whatever in the buffer can fit on 1 label.
-        return self.output('EPL2\r\nq812\r\nQ1218,24+0\r\nS4\r\nUN\r\nWN\r\nZB\r\nI8,A,001\r\nN\r\nGW%s,%s,%s,%s,%s\r\nP1\r\n'% (
-                (x, y, int(math.ceil(width/float(BITS_PER_BYTE))), height, data)))
+        command = 'EPL2\r\nq812\r\nQ1218,24+0\r\nS4\r\nUN\r\nWN\r\nZB\r\nI8,A,001\r\nN\r\nGW%s,%s,%s,%s,%s\r\nP1\r\n'% (
+                (x, y, int(math.ceil(width/float(BITS_PER_BYTE))), height, data))
 
+        if execute:
+            return self.output(command)
+        else:
+            return command
 
     def _generate_epl2_data(self, pixels, width, height):
         # The EPL2 command for printing graphics expects the
