@@ -24,8 +24,12 @@ import os.path
 import sys
 import math
 import struct
-from PIL import Image
 from StringIO import StringIO
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = False
 
 if sys.platform.lower().startswith('win'):
     IS_WINDOWS = True
@@ -156,6 +160,9 @@ class zebra(object):
         x    - x offset
         y    - y offset
         """
+        if not Image: # Is PIL available?
+            raise Exception("Python Imaging Library not installed! Cannot print graphic.")
+
         bits_per_byte = 8
         
         # Convert image data to black and white.
