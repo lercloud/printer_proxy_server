@@ -26,6 +26,8 @@ import math
 import struct
 from StringIO import StringIO
 
+BITS_PER_BYTE = 8
+
 try:
     from PIL import Image
 except ImportError:
@@ -190,12 +192,13 @@ class zebra(object):
             for x in range(0, width):
                 byte += "0" if pixels[x+(width*y)] == 0 else "1"
 
-                if len(byte) == bits_per_byte:
+                if len(byte) == BITS_PER_BYTE:
                     data += chr(int(byte, 2))
                     byte = ""
 
             if len(byte) > 0:
-                data += chr(int((byte+'00000000')[0:bits_per_byte], 2))
+                data += chr(int((byte+'00000000')[0:BITS_PER_BYTE], 2))
+
 
         # This should eventually be made more generic. Here's what's going on:
         # EPL2 - Let the printer know we'll be sending EPL2 commands.
@@ -210,7 +213,7 @@ class zebra(object):
         # GWx,y,w,h,d - Buffer graphic with `x`,`y` offset, width in bytes `w`, height in pixels/bits `h`, and image data `d`.
         # P1 - Print one copy of whatever in the buffer can fit on 1 label.
         command = 'EPL2\r\nq812\r\nQ1218,24+0\r\nS4\r\nUN\r\nWN\r\nZB\r\nI8,A,001\r\nN\r\nGW%s,%s,%s,%s,%s\r\nP1\r\n'% (
-                (x, y, int(math.ceil(width/float(bits_per_byte))), height, data))
+                (x, y, int(math.ceil(width/float(BITS_PER_BYTE))), height, data))
         self.output(command)
 
 if __name__ == '__main__':
