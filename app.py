@@ -18,6 +18,7 @@ parser = argparse.ArgumentParser(
     description='Provide a JSON-RPC proxy for a Zebra printer.'
 )
 parser.add_argument('-p', '--port', help='the port to run on', default="8443")
+parser.add_argument('-d', '--device', help='name of the printer to print to', default="zebra_python_unittest")
 args = parser.parse_args()
 
 app = Flask(__name__)
@@ -67,8 +68,11 @@ def index():
 
 @jsonrpc.method("output")
 @auth.login_required
-def output(printer_name="zebra_python_unittest", format="epl2", data=[]):
+def output(printer_name=None, format="epl2", data=[]):
     '''Print something on the printer.'''
+    if not printer_name:
+        printer_name = args.device or "zebra_python_unittest"
+
     return PRINTER.output(printer_name=printer_name, format=format,
                           data=data, raw=False, test=False)
 
