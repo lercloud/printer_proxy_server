@@ -67,8 +67,7 @@ def output(printer_name="zebra_python_unittest", format="epl2", data=[]):
 
     return PRINTER.output(format=format, data=data, raw=False, test=False)
 
-
-if __name__ == "__main__":
+def run():
     # Setup database
     db = sqlite3.connect(DB)
     db.cursor().execute('''
@@ -84,3 +83,8 @@ if __name__ == "__main__":
     ssl_context.use_certificate_file(ROOT_DIR + '/server.crt')
 
     app.run(debug=True, port=5001, ssl_context=ssl_context)
+
+	
+if __name__ == "__main__":
+    run()
+
