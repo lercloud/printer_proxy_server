@@ -1,7 +1,7 @@
 # Explicit import to enable 'python app.py'
 import __init__ 
 
-import hashlib, uuid, sqlite3
+import argparse, hashlib, inspect, os, sqlite3, uuid
 from OpenSSL import SSL
 from flask import Flask
 from flask_cors import cross_origin
@@ -10,8 +10,8 @@ from flask.ext.httpauth import HTTPBasicAuth
 from printer import PrinterController
 from header_decorators import json_headers
 
-DB = 'users.db'
-PRINTER = None
+ROOT_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+DB = ROOT_DIR + '/users.db'
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
@@ -80,7 +80,7 @@ if __name__ == "__main__":
 
     # Setup SSL cert
     ssl_context = SSL.Context(SSL.SSLv23_METHOD)
-    ssl_context.use_privatekey_file('server.key')
-    ssl_context.use_certificate_file('server.crt')
+    ssl_context.use_privatekey_file(ROOT_DIR + '/server.key')
+    ssl_context.use_certificate_file(ROOT_DIR + '/server.crt')
 
     app.run(debug=True, port=5001, ssl_context=ssl_context)
