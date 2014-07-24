@@ -12,11 +12,6 @@ PIL_SUPPORTED_FORMATS = [
 ] 
 
 class PrinterController(object):
-    def __init__(self, name='zebra_python_unittest'):
-        self.name = name
-        self.printer = zebra(name)
-
-
     def output(self, format="epl2", **kwargs):
         '''Print the passed-in data. Corresponds to "printer_proxy.print"'''
 
@@ -28,8 +23,10 @@ class PrinterController(object):
         return {'success': False, 'error': "Format '%s' not recognized" % format}
 
 
-    def output_epl2(self, data=[], raw=False, test=False):
+    def output_epl2(self, printer_name='zebra_python_unittest', data=[], raw=False, test=False):
         '''Print the passed-in EPL2 data.'''
+
+        printer = zebra(printer_name)
 
         if isinstance(data, basestring):
             data = [data]
@@ -37,13 +34,14 @@ class PrinterController(object):
         for datum in data:
             if not raw:
                 datum = base64.b64decode(datum)
-            self.printer.output(datum)
+            printer.output(datum)
 
         return {'success': True}
 
-
-    def output_img(self, data=[], raw=False, test=False):
+    def output_img(self, printer_name='zebra_python_unittest', data=[], raw=False, test=False):
         '''Print the passed-in image data.'''
+
+        printer = zebra(printer_name)
 
         if isinstance(data, basestring):
             data = [data]
@@ -51,6 +49,6 @@ class PrinterController(object):
         for datum in data:
             if not raw:
                 datum = base64.b64decode(datum)
-            self.printer.print_graphic(datum, 0, 0)
+            printer.print_graphic(datum, 0, 0)
 
         return {'success': True}
