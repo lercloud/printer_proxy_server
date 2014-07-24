@@ -14,6 +14,12 @@ ROOT_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe(
 DB = ROOT_DIR + '/users.db'
 PRINTER = PrinterController()
 
+parser = argparse.ArgumentParser(
+    description='Provide a JSON-RPC proxy for a Zebra printer.'
+)
+parser.add_argument('-p', '--port', help='the port to run on', default="8443")
+args = parser.parse_args()
+
 app = Flask(__name__)
 auth = HTTPBasicAuth()
 jsonrpc = JSONRPC(app, "/api", decorators=[
@@ -81,7 +87,7 @@ def run():
     ssl_context.use_privatekey_file(ROOT_DIR + '/server.key')
     ssl_context.use_certificate_file(ROOT_DIR + '/server.crt')
 
-    app.run(debug=True, port=5001, ssl_context=ssl_context)
+    app.run(debug=True, port=int(args.port), ssl_context=ssl_context)
 
 	
 if __name__ == "__main__":
