@@ -12,6 +12,7 @@ from header_decorators import json_headers
 
 ROOT_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 DB = ROOT_DIR + '/users.db'
+PRINTER = PrinterController()
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
@@ -62,10 +63,8 @@ def index():
 @auth.login_required
 def output(printer_name="zebra_python_unittest", format="epl2", data=[]):
     '''Print something on the printer.'''
-    if not PRINTER or PRINTER.name != printer_name:
-        PRINTER = PrinterController(name=printer_name)
-
-    return PRINTER.output(format=format, data=data, raw=False, test=False)
+    return PRINTER.output(printer_name=printer_name, format=format,
+                          data=data, raw=False, test=False)
 
 def run():
     # Setup database
