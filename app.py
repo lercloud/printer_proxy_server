@@ -42,6 +42,16 @@ def add_user(username, password):
     db.commit()
     db.close()
 
+# Not a route on purpose.
+# Use an interactive Python shell to delete users.
+def delete_user(username):
+    '''Adds a new JSON-RPC user to the database.'''
+
+    salt = str(uuid.uuid4())
+    db = sqlite3.connect(DB)
+    db.cursor().execute("DELETE FROM users WHERE username=?", (username,))
+    db.commit()
+    db.close()
 
 @auth.verify_password
 def verify_pwd(username, password):
