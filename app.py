@@ -78,13 +78,14 @@ def index():
 
 @jsonrpc.method("output")
 @auth.login_required
-def output(printer_name=None, format="epl2", data=[]):
+def output(printer_name=None, format="epl2", data=[], length=6, width=4, raw=False):
     '''Print something on the printer.'''
     if not printer_name:
         printer_name = args.device or "zebra_python_unittest"
 
     return PRINTER.output(printer_name=printer_name, format=format,
-                          data=data, raw=False, test=False)
+                          data=data, raw=raw,
+                          test=False)
 
 def run():
     # Setup database

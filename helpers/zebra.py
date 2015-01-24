@@ -57,7 +57,6 @@ class zebra(object):
 
     def _output_win(self, commands):
         if self.queue == 'zebra_python_unittest':
-            print commands
             return
         hPrinter = win32print.OpenPrinter(self.queue)
         try:
@@ -76,6 +75,7 @@ class zebra(object):
 
         commands - EPL2 commands to send to the printer
         """
+        print repr(commands)
         assert self.queue is not None
         if sys.version_info[0] == 3:
             if type(commands) != bytes:
@@ -145,7 +145,21 @@ class zebra(object):
         self.output(commands)
         self.output(open(filename,'rb').read())
 
-    def print_graphic(self, filename, x, y):
+    def epl_preamble(self, length, width, ppi=203):
+        # This should eventually be made more generic. Here's what's going on:
+        # EPL2 - Set page mode.
+        # q%s - Set label width to (width * ppi) pixels.
+        # Q%s,24+0 - Set label length to (length * ppi) pixels, gap between labels to 24 pixels, and label offset to 0 pixels.
+        # S4 - Set print speed to 3.5ips (83mm/s)
+        # UN - Disable error reporting.
+        # WN - Disable Windows mode. (WY to enable.)
+        # ZB - Print bottom of image first. (ZT to print top first.)
+        # I8,A,001 - Tell printer to expect 8-bit data (I8), Latin 1 encoding (A), and US localization (001).
+        # N - Clear image buffer.
+        return 'EPL2\r\nq%s\r\nQ%s,24+0\r\nS4\r\nUN\r\nWN\r\nZB\r\nI8,A,001\r\nN\r\n' % ((width * ppi), (length * ppi))
+
+
+    def print_graphic(self, filename, x, y, length=6, width=4, threshold=192):
         """Print an image file on the label printer.
 
         filename - local filename
@@ -153,21 +167,23 @@ class zebra(object):
         y        - y offset
         """
         with open(filename, "rb") as f:
-            return self.print_graphic_data(f.read(), x, y)
+            return self.print_graphic_data(f.read(), x, y, length=length, width=width, threshold=threshold)
 
-    def print_graphic_data(self, data, x, y, execute=True):
+    def print_graphic_data(self, data, x, y, length=6, width=4, threshold=192, execute=True):
         """Print image data on the label printer
 
         data - PIL-compatible image data
         x    - x offset
         y    - y offset
+        length - label length in inches
         """
         if not Image: # Is PIL available?
             raise Exception("Python Imaging Library not installed! Cannot print graphic.")
 
         
         # Convert image data to black and white.
-        img = Image.open(StringIO(data)).convert("L")
+        mode = "1" if threshold is None else "L"
+        img = Image.open(StringIO(data)).convert(mode)
 
         # Assign variable values for better readability.
         width = img.size[0] 
@@ -177,24 +193,15 @@ class zebra(object):
         # the last bits of each line with enough zero bits to
         # make a full byte. Hence the array instead of just
         # using the function's return value directly.
-        pixels = [0 if px < 192 else 1 for px in img.getdata()]
+        pixels = img.getdata()
+        if threshold is not None:
+            pixels = [0 if px < threshold else 1 for px in pixels]
 
         data = self._generate_epl2_data(pixels, width, height)
-
-        # This should eventually be made more generic. Here's what's going on:
-        # EPL2 - Set page mode.
-        # q812 - Set label width to 812 pixels. (We're assuming 4x6 labels here.)
-        # Q1218,24+0 - Set label length to 1218 pixels, gap between labels to 24 pixels, and label offset to 0 pixels.
-        # S4 - Set print speed to 3.5ips (83mm/s)
-        # UN - Disable error reporting.
-        # WN - Disable Windows mode. (WY to enable.)
-        # ZB - Print bottom of image first. (ZT to print top first.)
-        # I8,A,001 - Tell printer to expect 8-bit data (I8), Latin 1 encoding (A), and US localization (001).
-        # N - Clear image buffer.
         # GWx,y,w,h,d - Buffer graphic with `x`,`y` offset, width in bytes `w`, height in pixels/bits `h`, and image data `d`.
         # P1 - Print one copy of whatever in the buffer can fit on 1 label.
-        command = 'EPL2\r\nq812\r\nQ1218,24+0\r\nS4\r\nUN\r\nWN\r\nZB\r\nI8,A,001\r\nN\r\nGW%s,%s,%s,%s,%s\r\nP1\r\n'% (
-                (x, y, int(math.ceil(width/float(BITS_PER_BYTE))), height, data))
+        command = '%sGW%s,%s,%s,%s,%s\r\nP1\r\n'% (
+                (self.epl_preamble(length, width), x, y, int(math.ceil(width/float(BITS_PER_BYTE))), height, data))
 
         if execute:
             return self.output(command)
